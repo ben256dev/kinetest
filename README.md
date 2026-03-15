@@ -3,7 +3,7 @@
 ## Build
 
 ```bash
-cc -o kinetest ik_speed_test.c -lm
+cc -o kinetest ik_speed_test.c -lm -O3 -Wall -Wextra
 ```
 
 ## Usage

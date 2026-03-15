@@ -4,6 +4,9 @@
 #include <string.h>
 #include <time.h>
 
+#define BUTIL_IMPLEMENTATION
+#include "butil.h"
+
 typedef struct vec2 {
     float x;
     float y;
@@ -21,26 +24,63 @@ typedef struct planar_two_link_limb {
     float R;
 } planar_two_link_limb;
 
+typedef struct reachability_values {
+    vec2 u;
+    float n;
+    int reachability;
+} reachability_values;
+
 /* RETURN VALUES:
  *     0 success
  *     1 non positive limb lengths
  *     2 zero distance
- *     3 circles do not intersect
+ *     3 end effector too far to reach
+ *     4 end effector too close to reach
  */
-int planar_two_link_solve_circles(planar_two_link_limb *limb) {
-    if (limb->r <= 0.0f || limb->R <= 0.0f)
+int check_reachability(const planar_two_link_limb *limb, reachability_values *reachability) {
+    if (reachability == NULL)
+        die("reachability == NULL");
+
+    if (limb->r <= 0.0f || limb->R <= 0.0f) {
+        reachability->reachability = 1;
         return 1;
+    }
 
     const vec2 u = { limb->end_effector.x - limb->base.x, limb->end_effector.y - limb->base.y };
-    const float d = hypotf(u.x, u.y);
+    const float n = u.x * u.x + u.y * u.y;
 
-    if (d == 0.0f)
+    if (n == 0.0f) {
+        reachability->reachability = 2;
         return 2;
+    }
 
-    if (d > limb->r + limb->R || d < fabsf(limb->r - limb->R))
+    const float radii_sum = limb->r + limb->R;
+    if (n > radii_sum * radii_sum) {
+        reachability->reachability = 3;
         return 3;
+    }
 
-    const float x = (d * d + limb->r - limb->R) / (2.0f * d);
+    const float radii_diff = fabsf(limb->r - limb->R);
+    if (n < radii_diff * radii_diff) {
+        reachability->reachability = 4;
+        return 4;
+    }
+
+    reachability->u = u;
+    reachability->n = n;
+    reachability->reachability = 0;
+    return 0;
+}
+int planar_two_link_solve_circles(planar_two_link_limb *limb) {
+    reachability_values values;
+    if (check_reachability(limb, &values))
+        return values.reachability;
+
+    const vec2 u = values.u;
+    const float n = values.n;
+
+    const float d = sqrtf(n);
+    const float x = (n + limb->r - limb->R) / (2.0f * d);
     const float y = sqrtf(limb->r - x * x);
 
     const float u_inv_sqrt = 1.0f / d;
@@ -50,15 +90,14 @@ int planar_two_link_solve_circles(planar_two_link_limb *limb) {
     limb->midjoint.x = limb->base.x + x * u_normalized.x + y * u_normalized_perp.x;
     limb->midjoint.y = limb->base.y + x * u_normalized.y + y * u_normalized_perp.y;
 
-    return 0;
+    return values.reachability;
 }
-
 static int planar_two_link_solve_law_of_cosines(planar_two_link_limb *limb) {
     if (limb->r <= 0.0f || limb->R <= 0.0f)
         return 1;
 
     const vec2 u = { limb->end_effector.x - limb->base.x, limb->end_effector.y - limb->base.y };
-    const float d = hypotf(u.x, u.y);
+    const float d = sqrtf(u.x * u.x + u.y * u.y);
 
     if (d == 0.0f)
         return 2;
@@ -66,16 +105,14 @@ static int planar_two_link_solve_law_of_cosines(planar_two_link_limb *limb) {
     if (d > limb->r + limb->R || d < fabsf(limb->r - limb->R))
         return 3;
 
-    {
-        const float cos_theta = (d * d + limb->r - limb->R) / (2.0f * d * limb->r);
-        const float clamped_cos_theta = fmaxf(-1.0f, fminf(1.0f, cos_theta));
-        const float theta = acosf(clamped_cos_theta);
-        const float u_angle = atan2f(u.y, u.x);
-        const float midjoint_angle = u_angle + theta;
+    const float cos_theta = (d * d + limb->r - limb->R) / (2.0f * d * limb->r);
+    const float clamped_cos_theta = fmaxf(-1.0f, fminf(1.0f, cos_theta));
+    const float theta = acosf(clamped_cos_theta);
+    const float u_angle = atan2f(u.y, u.x);
+    const float midjoint_angle = u_angle + theta;
 
-        limb->midjoint.x = limb->base.x + limb->r * cosf(midjoint_angle);
-        limb->midjoint.y = limb->base.y + limb->r * sinf(midjoint_angle);
-    }
+    limb->midjoint.x = limb->base.x + limb->r * cosf(midjoint_angle);
+    limb->midjoint.y = limb->base.y + limb->r * sinf(midjoint_angle);
 
     return 0;
 }
