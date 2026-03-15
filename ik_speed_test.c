@@ -93,17 +93,12 @@ int planar_two_link_solve_circles(planar_two_link_limb *limb) {
     return values.reachability;
 }
 static int planar_two_link_solve_law_of_cosines(planar_two_link_limb *limb) {
-    if (limb->r <= 0.0f || limb->R <= 0.0f)
-        return 1;
+    reachability_values values;
+    if (check_reachability(limb, &values))
+        return values.reachability;
 
-    const vec2 u = { limb->end_effector.x - limb->base.x, limb->end_effector.y - limb->base.y };
-    const float d = sqrtf(u.x * u.x + u.y * u.y);
-
-    if (d == 0.0f)
-        return 2;
-
-    if (d > limb->r + limb->R || d < fabsf(limb->r - limb->R))
-        return 3;
+    const vec2 u = values.u;
+    const float d = sqrtf(values.n);
 
     const float cos_theta = (d * d + limb->r - limb->R) / (2.0f * d * limb->r);
     const float clamped_cos_theta = fmaxf(-1.0f, fminf(1.0f, cos_theta));
@@ -122,11 +117,44 @@ typedef int (*solver_fn)(planar_two_link_limb *limb);
 typedef struct solver_result {
     int status;
     vec2 midjoint;
+    size_t iterations;
     double elapsed_seconds;
 } solver_result;
 
 static double elapsed_seconds(clock_t start, clock_t end) {
     return (double)(end - start) / (double)CLOCKS_PER_SEC;
+}
+
+static double elapsed_milliseconds(solver_result result) {
+    return result.elapsed_seconds * 1000.0;
+}
+
+static double average_milliseconds(solver_result result) {
+    if (result.iterations == 0)
+        return 0.0;
+
+    return elapsed_milliseconds(result) / (double)result.iterations;
+}
+
+static double average_nanoseconds(solver_result result) {
+    return average_milliseconds(result) * 1000000.0;
+}
+
+static const char *reachability_label(int status) {
+    switch (status) {
+    case 0:
+        return "solution found";
+    case 1:
+        return "negative lengths";
+    case 2:
+        return "zero distance";
+    case 3:
+        return "too far";
+    case 4:
+        return "too close";
+    default:
+        return "unknown";
+    }
 }
 
 static solver_result run_solver(size_t iterations, const planar_two_link_limb *input, solver_fn solver) {
@@ -144,18 +172,20 @@ static solver_result run_solver(size_t iterations, const planar_two_link_limb *i
         solver_result result = { 0 };
         result.status = status;
         result.midjoint = limb.midjoint;
+        result.iterations = iterations;
         result.elapsed_seconds = elapsed_seconds(start, end);
         return result;
     }
 }
 
 static void print_solver_result(const char *label, solver_result result) {
-    printf("%s: status=%d midjoint=(%f, %f) time=%0.9f\n",
+    printf("%s: midjoint=(%f, %f) avg_ns=%0.3f total_ms=%0.6f reachability=%s\n",
            label,
-           result.status,
            result.midjoint.x,
            result.midjoint.y,
-           result.elapsed_seconds);
+           average_nanoseconds(result),
+           elapsed_milliseconds(result),
+           reachability_label(result.status));
 }
 
 static void print_json_row_prefix(int *needs_comma) {
@@ -174,11 +204,14 @@ static void print_json_number_or_null(float value) {
 
 static void print_json_solver_row(const char *label, solver_result result, int *needs_comma) {
     print_json_row_prefix(needs_comma);
-    printf("  {\"label\":\"%s\",\"status\":%d,\"midjoint_x\":", label, result.status);
+    printf("  {\"label\":\"%s\",\"midjoint_x\":", label);
     print_json_number_or_null(result.midjoint.x);
     printf(",\"midjoint_y\":");
     print_json_number_or_null(result.midjoint.y);
-    printf(",\"time_seconds\":%.9f}", result.elapsed_seconds);
+    printf(",\"avg_ns\":%.3f,\"total_ms\":%.6f,\"reachability\":\"%s\"}",
+           average_nanoseconds(result),
+           elapsed_milliseconds(result),
+           reachability_label(result.status));
 }
 
 int main(int argc, char **argv) {
