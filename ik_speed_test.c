@@ -80,36 +80,39 @@ int planar_two_link_solve_circles(planar_two_link_limb *limb) {
     const float n = values.n;
 
     const float d = sqrtf(n);
-    const float x = (n + limb->r - limb->R) / (2.0f * d);
-    const float y = sqrtf(limb->r - x * x);
+    const float x = (n + limb->r * limb->r - limb->R * limb->R) / (2.0f * d);
+    const float y = sqrtf(limb->r * limb->r - x * x);
 
-    const float u_inv_sqrt = 1.0f / d;
-    const vec2 u_normalized = { u.x * u_inv_sqrt, u.y * u_inv_sqrt };
-    const vec2 u_normalized_perp = { -u_normalized.y, u_normalized.x };
+    const vec2 U = { u.x / d, u.y / d};
 
-    limb->midjoint.x = limb->base.x + x * u_normalized.x + y * u_normalized_perp.x;
-    limb->midjoint.y = limb->base.y + x * u_normalized.y + y * u_normalized_perp.y;
+    limb->midjoint.x = limb->base.x + x * U.x + y * -U.y;
+    limb->midjoint.y = limb->base.y + x * U.y + y *  U.x;
 
     return values.reachability;
 }
-static int planar_two_link_solve_law_of_cosines(planar_two_link_limb *limb) {
+static int planar_two_link_solve_cosines(planar_two_link_limb *limb) {
     reachability_values values;
     if (check_reachability(limb, &values))
         return values.reachability;
 
     const vec2 u = values.u;
-    const float d = sqrtf(values.n);
+    const float n = values.n;
 
-    const float cos_theta = (d * d + limb->r - limb->R) / (2.0f * d * limb->r);
-    const float clamped_cos_theta = fmaxf(-1.0f, fminf(1.0f, cos_theta));
-    const float theta = acosf(clamped_cos_theta);
-    const float u_angle = atan2f(u.y, u.x);
-    const float midjoint_angle = u_angle + theta;
+    const float d = sqrtf(n);
+    const float numerator = limb->r * limb->r + n - limb->R * limb->R;
+    const float denominator = 2.0f * limb->r * d;
+
+    float theta = acosf(numerator / denominator);
+    if (theta != theta)
+        theta = 0.0f;
+
+    float end_effector_angle = atan2f(u.y, u.x);
+    float midjoint_angle = end_effector_angle + theta;
 
     limb->midjoint.x = limb->base.x + limb->r * cosf(midjoint_angle);
     limb->midjoint.y = limb->base.y + limb->r * sinf(midjoint_angle);
 
-    return 0;
+    return values.reachability;
 }
 
 typedef int (*solver_fn)(planar_two_link_limb *limb);
@@ -240,7 +243,7 @@ int main(int argc, char **argv) {
 
     size_t iterations = (size_t)strtoul(argv[argi], NULL, 10);
 
-    cosines_result = run_solver(iterations, &limb, planar_two_link_solve_law_of_cosines);
+    cosines_result = run_solver(iterations, &limb, planar_two_link_solve_cosines);
     circles_result = run_solver(iterations, &limb, planar_two_link_solve_circles);
 
     if (json_output != 0) {
