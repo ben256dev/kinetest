@@ -1,5 +1,10 @@
 # Kinetest
 
+## Godot
+
+A script-free Godot 4.7 project is in [`godot/`](godot/README.md).
+Open `godot/project.godot`, or run `godot4 --editor --path godot`.
+
 ## Build
 
 ```bash

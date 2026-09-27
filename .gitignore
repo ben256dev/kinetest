@@ -1,1 +1,5 @@
 kinetest
+
+# Godot editor cache and exported builds
+.godot/
+godot/builds/

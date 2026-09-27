@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://dt3kv8lcaqtpj"]
+
+[ext_resource type="Script" uid="uid://beghtapepdou1" path="res://scripts/limb.gd" id="1_7obil"]
+
+[node name="TwoLinkLimb" type="Node2D" unique_id=1575460542]
+script = ExtResource("1_7obil")
+r = 150.0
+R = 150.0
+line_width = 8.0
+joint_radius = 15.0
+target_radius = 10.0
