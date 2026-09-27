@@ -4,7 +4,6 @@
 
 [node name="TwoLinkLimb" type="Node2D" unique_id=1575460542]
 script = ExtResource("1_7obil")
-solver = 1
 flip_orientation = true
 line_width = 8.0
 joint_radius = 15.0

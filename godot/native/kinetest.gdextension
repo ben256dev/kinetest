@@ -1,0 +1,8 @@
+[configuration]
+entry_symbol = "kinetest_library_init"
+compatibility_minimum = "4.2"
+reloadable = false
+
+[libraries]
+linux.debug.x86_64 = "res://native/bin/libkinetest.so"
+linux.release.x86_64 = "res://native/bin/libkinetest.so"

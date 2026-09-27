@@ -3,3 +3,7 @@ kinetest
 # Godot editor cache and exported builds
 .godot/
 godot/builds/
+
+# Generated native extension API, objects, and platform binaries
+godot/native/generated/
+godot/native/bin/

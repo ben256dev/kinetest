@@ -2,8 +2,15 @@
 
 ## Godot
 
-A script-free Godot 4.7 project is in [`godot/`](godot/README.md).
-Open `godot/project.godot`, or run `godot4 --editor --path godot`.
+The Godot 4.7 workspace compares GDScript and native C solvers with live timing
+graphs. See [`godot/`](godot/README.md) for details. On Linux x86_64:
+
+```bash
+godot/native/build.sh
+godot4 --editor --path godot
+```
+
+Restart an already-open editor after building the native extension.
 
 ## Build
 
