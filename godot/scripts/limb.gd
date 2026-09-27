@@ -23,7 +23,9 @@ enum Reachability { REACHABLE, INVALID_LIMB_LENGTH, ZERO_DISTANCE, TOO_FAR, TOO_
 @export var target_radius: float = 15.0
 @export var target_color: Color = Color.YELLOW
 
-signal timings_recorded(circles_usec: float, cosines_usec: float, native_circles_ns: float, native_cosines_ns: float)
+signal timings_recorded(
+	circles_usec: float, cosines_usec: float, native_circles_ns: float, native_cosines_ns: float
+)
 
 const BENCHMARK_CALLS := 100
 const NATIVE_BENCHMARK_CALLS := 4096
@@ -52,7 +54,7 @@ func _check_reachability() -> Reachability:
 		return Reachability.INVALID_LIMB_LENGTH
 
 	_u = target
-	_n = _u.x ** 2 + _u.y ** 2
+	_n = _u.length_squared()
 
 	if _n == 0.0:
 		return Reachability.ZERO_DISTANCE
@@ -138,12 +140,23 @@ func _process(_delta) -> void:
 	var native_timings := Vector2(-1, -1)
 	if native_solver != null:
 		var started := Time.get_ticks_usec()
-		var native: Array = native_solver.benchmark(target.x, target.y, r, R,
-			-1.0 if flip_orientation else 1.0, float(NATIVE_BENCHMARK_CALLS), float(_benchmark_frame % 2))
+		var native: Array = native_solver.benchmark(
+			target.x,
+			target.y,
+			r,
+			R,
+			-1.0 if flip_orientation else 1.0,
+			float(NATIVE_BENCHMARK_CALLS),
+			float(_benchmark_frame % 2)
+		)
 		native_bridge_usec = Time.get_ticks_usec() - started
 		native_timings = Vector2(native[0], native[1])
 		var native_pose := Vector2(native[2 + solver * 2], native[3 + solver * 2])
-		pose_difference = native_pose.distance_to(results[solver]) if reachability == Reachability.REACHABLE else 0.0
+		pose_difference = (
+			native_pose.distance_to(results[solver])
+			if reachability == Reachability.REACHABLE
+			else 0.0
+		)
 		if use_native_result:
 			reachability = int(native[6 + solver]) as Reachability
 			if reachability == Reachability.REACHABLE:
