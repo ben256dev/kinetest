@@ -8,6 +8,7 @@ var target: Vector2
 @export_group("Limb Parameters")
 @export var r: float = 100
 @export var R: float = 100
+@export var flip_orientation: bool = false
 
 @export_group("Drawing")
 @export var line_color: Color = Color.WHITE
@@ -51,7 +52,7 @@ func _solve_with_circles() -> Reachability:
 
 	var d: float = sqrt(_n)
 	var x: float = (_n + r ** 2 - R ** 2) / (2.0 * d)
-	var y: float = sqrt(r ** 2 - x ** 2)
+	var y: float = sqrt(r ** 2 - x ** 2) * (-1.0 if flip_orientation else 1.0)
 
 	var U: Vector2 = _u / d
 

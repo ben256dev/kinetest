@@ -6,6 +6,7 @@
 script = ExtResource("1_7obil")
 r = 150.0
 R = 150.0
+flip_orientation = true
 line_width = 8.0
 joint_radius = 15.0
 target_radius = 10.0
